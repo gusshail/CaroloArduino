@@ -70,15 +70,20 @@ void loop() {
 }
 
 void rcControl(){
+  delay(200); //take away if you dont want to read
   Serial.println("RC Control took over!");
   velocity = pulseIn(rcPinESC, HIGH, 25000);
+ 
   int i;
+  int bond; 
   int steerVals[10] = {90};
   for(i = 0; i < 10; i++){
-    steerVals[i] = map(pulseIn(rcPinSteer, HIGH, 25000), 1000, 2000, 0, 180);;
+   bond = constrain(rcPinSteer, 1290, 1750);
+   // steerVals[i] = map(pulseIn(rcPinSteer, HIGH, 25000), 1000, 2000, 45 , 130);
+  steerVals[i] = map(constrain(pulseIn(rcPinSteer, HIGH, 25000), 1200, 1800), 1200, 1800, 55, 125);
   }
-  steer = median(steerVals, 10) + 7;
-  //velocity = map(velocity, 1000, 2000, 0, 150);
+  steer = median(steerVals, 10);   // +7
+  //velocity = map(velocity, 1000, 2000, 0, 150); 
   Serial.print("steer ");
   Serial.println(steer);
   Serial.print("velocity ");
