@@ -1,4 +1,4 @@
-  // --------- //
+   // --------- //
 // Libraries //
 
 // --------- //
@@ -29,8 +29,8 @@ void setup() {
   motor.writeMicroseconds(1500);  // set servo to mid-point
   steering.attach(servoPin);
   steering.write(90);  // set servo to mid-point
-  attachInterrupt(digitalPinToInterrupt(18), wheelDistance1, HIGH);        //If we need to do stuff with wheel encoder, pls add pins in definition stage
-  attachInterrupt(digitalPinToInterrupt(19), wheelDistance2, HIGH);
+//  attachInterrupt(digitalPinToInterrupt(18), wheelDistance1, HIGH);        //If we need to do stuff with wheel encoder, pls add pins in definition stage
+ // attachInterrupt(digitalPinToInterrupt(19), wheelDistance2, HIGH);
   attachInterrupt(digitalPinToInterrupt(A8), rcControllerInterrupt, RISING);
   attachInterrupt(digitalPinToInterrupt(A9), rcControllerInterrupt, RISING);
   rcControllerFlag = 0;
@@ -44,11 +44,8 @@ void loop() {
   Serial.print("Pulse read: ");
   Serial.println(rcControllerFlag);
  
-  if (rcControllerFlag > 1000) {
-    QualityCheck++; 
-  }
   
-  if(rcControllerFlag > 1000 && QualityCheck > 2){
+  if(rcControllerFlag > 1000) {
     rcControl();
     controlFlag = 0;
  //   motor.writeMicroseconds(1500);
@@ -87,7 +84,7 @@ void rcControl(){
   Serial.print("velocity ");
   Serial.println(velocity);
   steering.write(steer);
-  motor.writeMicroseconds( velocity);   //1650 - vel
+  motor.writeMicroseconds(velocity);   //1650 - vel
   int temp = pulseIn(rcPinSteer, LOW, 25000);
   Serial.println(temp);
   if (pulseIn(rcPinSteer, LOW, 25000) == 0){
