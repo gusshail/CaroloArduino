@@ -20,6 +20,7 @@ unsigned long rcControllerFlag, distance1, distance2;
 String input;
 int steer, velocity, controlFlag;
 int QualityCheck = 0;
+int pulse;
 
 void setup() {
   //SERIAL CONNECTION
@@ -70,19 +71,33 @@ void loop() {
 }
 
 void rcControl(){
-  delay(200); //take away if you dont want to read
+  //delay(200); //take away if you dont want to read
   Serial.println("RC Control took over!");
-  velocity = pulseIn(rcPinESC, HIGH, 25000);
+ pulse = pulseIn(rcPinESC, HIGH, 25000);
+ velocity = 1500;
+
+  
+  if(pulse > 1560) {
+  velocity = 1560; 
+  }
+
+   else if(pulse < 1450) {
+    velocity = 1250;
+  }
+
+  else if(pulse > 1450 && pulse < 1560) {
+    velocity = 1500; 
+  }
  
   int i;
   int bond; 
   int steerVals[10] = {90};
-  for(i = 0; i < 10; i++){
-   bond = constrain(rcPinSteer, 1290, 1750);
+  for(i = 0; i < 3; i++){
+   //bond = constrain(rcPinSteer, 1290, 1750);
    // steerVals[i] = map(pulseIn(rcPinSteer, HIGH, 25000), 1000, 2000, 45 , 130);
-  steerVals[i] = map(constrain(pulseIn(rcPinSteer, HIGH, 25000), 1200, 1800), 1200, 1800, 55, 125);
+  steerVals[i] = map(constrain(pulseIn(rcPinSteer, HIGH, 25000), 1200, 1800), 1200, 1800, 65, 115);
   }
-  steer = median(steerVals, 10);   // +7
+  steer = median(steerVals, 3);   // +7
   //velocity = map(velocity, 1000, 2000, 0, 150); 
   Serial.print("steer ");
   Serial.println(steer);
