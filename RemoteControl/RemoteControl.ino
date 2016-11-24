@@ -34,6 +34,9 @@ void setup() {
  // attachInterrupt(digitalPinToInterrupt(19), wheelDistance2, HIGH);
   attachInterrupt(digitalPinToInterrupt(A8), rcControllerInterrupt, RISING);
   attachInterrupt(digitalPinToInterrupt(A9), rcControllerInterrupt, RISING);
+  pinMode(10, INPUT); //button 1
+  pinMode(11, INPUT); //button 2
+  pinMode(12, INPUT); //button 3
   rcControllerFlag = 0;
   controlFlag = 1;
   distance1 = 0;
@@ -45,14 +48,12 @@ void loop() {
   Serial.print("Pulse read: ");
   Serial.println(rcControllerFlag);
  
+  buttonRead();
   
   if(rcControllerFlag > 1000) {
     rcControl();
     controlFlag = 0;
- //   motor.writeMicroseconds(1500);
 
- // int y = 
-   // steering.write(60);
     if (pulseIn(rcPinSteer, LOW, 25000) == 0){
       rcControllerFlag = 0;
       Serial.print("RC control set to off!");
@@ -81,7 +82,7 @@ void rcControl(){
   velocity = 1560; 
   }
 
-   else if(pulse < 1450) {
+   else if(pulse < 1300) {
     velocity = 1250;
   }
 
@@ -98,6 +99,9 @@ void rcControl(){
   steerVals[i] = map(constrain(pulseIn(rcPinSteer, HIGH, 25000), 1200, 1800), 1200, 1800, 65, 115);
   }
   steer = median(steerVals, 3);   // +7
+  if(steer > 85 && steer < 94) {
+    steer = 90;
+  }
   //velocity = map(velocity, 1000, 2000, 0, 150); 
   Serial.print("steer ");
   Serial.println(steer);
@@ -111,6 +115,41 @@ void rcControl(){
     rcControllerFlag = 0;
     Serial.print("RC control set to off!");
   }
+}
+
+void buttonRead() {
+
+  int start = 1560;
+  int plsStop = 1500;
+  int buttonPulse = pulseIn(rcPinESC, HIGH, 25000);
+  Serial.println(buttonPulse);
+  
+
+  if(buttonPulse < 1400) {
+        motor.writeMicroseconds(plsStop);
+      }
+
+
+ if (digitalRead(10) && buttonPulse > 1400) {
+      Serial.print("Button 1 on");
+      motor.writeMicroseconds(start);
+}
+
+
+if (digitalRead(11) && buttonPulse > 1400) {
+      motor.writeMicroseconds(start);
+       // steering.write(70);
+      
+      Serial.print("Button 2 on");
+    }
+if (digitalRead(12) && buttonPulse > 1400) {
+      motor.writeMicroseconds(start);
+      //  steering.write(110);
+      Serial.print("Button 3 on");
+    }
+
+
+  
 }
 
 void manualControl(){
