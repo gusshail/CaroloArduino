@@ -1,15 +1,7 @@
-//#include <messageproto.pb.h>
-
-//#include <pb_decode.h>
-//#include <pb_encode.h>we
-
-
-
 #include <Smartcar.h>
 #include "CarVars.h"
-#include <Netstrings.h>
 
-#define DEBUG //comment this line out for protobuffer output
+//#define DEBUG //comment this line out for protobuffer output
 #if 1 //preprocessor bug workaround, do not remove if you want the #ifndef DEBUG to work
 __asm volatile ("nop");
 #endif
@@ -17,21 +9,16 @@ __asm volatile ("nop");
 #include <pb_encode.h>
 #include <pb_decode.h>
 #include <messageproto.pb.h>
-#include <pb.h>
-#include <pb_common.h>
-
-
 const unsigned short flagEND = 19;
 const unsigned short flagESC = 125;
 const unsigned short varXOR  = 32;
 const unsigned short BUFFER_SIZE = 32;
 uint8_t enc_buffer[32];
 uint8_t dec_buffer[32];
-
 size_t message_length;
 boolean status;
 #else //if we are in debug, we'll use the Netstrings library for encoding
-
+#include <Netstrings.h>
 #endif
 
 Odometer encoderLeft(33), encoderRight(33);
@@ -65,112 +52,75 @@ const int qualityControlBits = sizeof(qualityControl) * 8; //the total number of
 const int qualityThreshold = 3; //the maximum amount of invalid measurements we can get and still consider the signal of acceptable quality
 unsigned int throttleFreq = 0;
 unsigned int servoFreq = 0;
+int rcControllerFlag;
 int ledPacket = 0; //a packet that includes the led light states
 
-unsigned long rcControllerFlag;
-int controlFlag,steer, pulse;
-double velocity;
-
 void setup() {
-      Serial.begin(115200);
-  Serial.print("I am in a setup ");
-  //frontSonar.attach(US_FRONT_ADDRESS);
- // frontSonar.setGain(US_GAIN);
-  //frontSonar.setRange(US_RANGE);
-  //frontSonar.setPingDelay(US_DELAY);
+  rcControllerFlag = 1;
+  frontSonar.attach(US_FRONT_ADDRESS);
+  frontSonar.setGain(US_GAIN);
+  frontSonar.setRange(US_RANGE);
+  frontSonar.setPingDelay(US_DELAY);
   rearSonar.attach(US_REAR_ADDRESS);
-  //rearSonar.setGain(US_GAIN);
-  //rearSonar.setRange(US_RANGE);
-  //rearSonar.setPingDelay(US_DELAY);
+  rearSonar.setGain(US_GAIN);
+  rearSonar.setRange(US_RANGE);
+  rearSonar.setPingDelay(US_DELAY);
   rearLeftIR.attach(IR_REAR_LEFT_PIN);
-   Serial.print("I did attach IR 1111");
   rearRightIR.attach(IR_REAR_RIGHT_PIN);
-//  Serial.print("I did attach IR 2222");
   middleRearIR.attach(IR_MIDDLE_REAR_PIN);
-  //Serial.print("I did attach IR 3333");
   middleFrontIR.attach(IR_MIDDLE_FRONT_PIN);
- // Serial.print("I did attach IR 4444");
   encoderLeft.attach(ENCODER_LEFT_PIN);
   encoderLeft.begin();
-  //Serial.print("I did attach Wheel Enconder on left wheel");
   encoderRight.attach(ENCODER_RIGHT_PIN);
   encoderRight.begin();
-  //Serial.print("I did attach Wheel Enconder on right wheel");
   car.begin(encoderLeft);
-//  Serial.print("I did begin the car");
-setupChangeInterrupt(OVERRIDE_THROTTLE_PIN);
-setupChangeInterrupt(OVERRIDE_SERVO_PIN);
-//  attachInterrupt(digitalPinToInterrupt(A8), rcControllerInterrupt, RISING);
- // attachInterrupt(digitalPinToInterrupt(A9), rcControllerInterrupt, RISING);
-
-    rcControllerFlag = 0;
-    controlFlag = 1;
+ setupChangeInterrupt(OVERRIDE_THROTTLE_PIN);
+  setupChangeInterrupt(OVERRIDE_SERVO_PIN);
+ // attachInterrupt(digitalPinToInterrupt(OVERRIDE_THROTTLE_PIN), rcControllerInterrupt, RISING);
+ // attachInterrupt(digitalPinToInterrupt(OVERRIDE_SERVO_PIN), rcControllerInterrupt, RISING);
   
-//  Serial.print("Interrupted");
- // gyro.attach();
- // gyro.begin();  
- // Serial.print("I did attach gyro");//default 80ms
+  gyro.attach();
+  gyro.begin(); //default 80ms
   pinMode(BUTTON1_PIN, INPUT); //button 1
   pinMode(BUTTON2_PIN, INPUT); //button 2
   pinMode(BUTTON3_PIN, INPUT); //button 3
-
-  //Serial.print("I was here");
- // delay(500); //wait a bit for the esc
+  delay(500); //wait a bit for the esc
   // car.enableCruiseControl(encoderLeft);
   //  car.enableCruiseControl(1,4,6);
   car.setSpeed(0);
-   //to HLB
-
+  Serial.begin(115200); //to HLB
   Serial.setTimeout(200); //set a timeout so Serial.readStringUntil dies after the specified amount of time
   Serial3.begin(9600); //to LED driver
-
-  
 }
 
 void loop() {
 
-
-
-  //delay(100);
-  //Serial.print("hi");
+ //Serial.print("I got here!");
   handleOverride(); //look for an override signal and if it exists disable serial input from the HLB
   handleInput(); //look for a serial input if override is not triggered and act accordingly
   updateLEDs(); //update LEDs depending on the mode we are currently in
- // gyro.update(); //integrate gyroscope's readings
+  gyro.update(); //integrate gyroscope's readings
   car.updateMotors(); //for the PID controller (if enabled)
-  //transmitSensorData(); //fetch and transmit the sensor data in the correct intervals
-
-  pulse = pulseIn(OVERRIDE_SERVO_PIN, HIGH, 25000);
-  Serial.print("Pulse is");
-  Serial.println(pulse);
-
-
-  if (pulse > 1650) {
-    car.setSpeed(0);
-    Serial.print("Shut down!");
-  }
+  transmitSensorData(); //fetch and transmit the sensor data in the correct intervals
 }
 
 void handleOverride() {
 
 
 
-  
-  boolean qualityCheck = (getHighBits() >= qualityControlBits - qualityThreshold); //true if there are more high bits (valid measurements) than the total ones minus a threshold
+int pulse;
 
-  Serial.print("Highbits are");
-  Serial.println(getHighBits());
-   Serial.print("Quality Control bits");
-  Serial.println(qualityControlBits);
-  Serial.print("Quality Threshold");
-  Serial.println(qualityThreshold);
-  
-  
+ //   pulse = pulseIn(OVERRIDE_THROTTLE_PIN, HIGH, 25000);
+   // Serial.print(pulse);
 
-
+ 
+  boolean qualityCheck = (getHighBits() >= qualityControlBits - qualityThreshold);
   
+  // Serial.print("High Bits");
+  // Serial.println(getHighBits());
+  
+  //true if there are more high bits (valid measurements) than the total ones minus a threshold
   if (qualityCheck) { //good quality, means that the RC controller is turned on, therefore we should go on override mode
-    Serial.print("Override");
     overrideTriggered = true;
     if (!prevOverrideState && (millis() > overrideRelease)) { //if the last qualityCheck was false (therefore going into rc mode for the first time) AND we are NOT within overrideRelease (in order to avoid restarting in case of a fast bad qualitycheck within the OVERRIDE_TIMEOUT
       overrideBegin = millis() + OVERRIDE_BEGIN_OFFSET; //we need to wait 1 sec according to the rules while in rc mode before moving the motors
@@ -178,6 +128,9 @@ void handleOverride() {
     overrideRelease = millis() + OVERRIDE_TIMEOUT; //specify the moment in the future to re-enable Serial communication
     prevOverrideState = true;
   } else { //this means that the necessary amount of measurements was not valid, therefore we consider the signal not to be of good quality (RC controller is turned off)
+  //  Serial.print("Shutting Down");
+    throttleFreq = 0;
+    servoFreq = 0; 
     throttleSignalPending = false; //indicate that loop() has processed/disregarded the throttle signal
     steeringSignalPending = false; //indicate that loop() has read/disregarded the servo signal
     prevOverrideState = false;
@@ -185,38 +138,38 @@ void handleOverride() {
   if (overrideTriggered) { //if override is triggered, then you can consider signals from the channels
     boolean _throttleSignalPending = throttleSignalPending;
     if (_throttleSignalPending) {
-      throttleFreq = throttleSignalFreq; //save the throttle's frequency
-     // Serial.print("Throttle value is");
-     // Serial.println(throttleFreq);
+      
+      throttleFreq = throttleSignalFreq;//save the throttle's frequency
+
+         Serial.print("Throttle");
+         Serial.println(throttleFreq);
+
+     
       throttleSignalPending = false; //indicate that loop() has processed the throttle signal
     }
     boolean _steeringSignalPending = steeringSignalPending;
     if (_steeringSignalPending) { //if there is something to be processed
       servoFreq = steeringSignalFreq; //save the steering's frequency
-      Serial.print("Servo value is");
-      Serial.println(servoFreq);
+
+       Serial.print("Servo");
+         Serial.println(servoFreq);
+
       steeringSignalPending = false; //indicate that loop() has read the servo signal
     }
   }
 }
 
 void handleInput() {
-
-//  int x = Serial.available();
-//  Serial.print("Serial is");
- // Serial.println(x);
   if (!overrideTriggered || (millis() > overrideRelease)) {
     if (overrideTriggered) { //this state is only entered when the OVERRIDE_TIMEOUT is over
       overrideTriggered = false;
       car.setSpeed(0); //after going out of the override mode, set speed and steering to initial position
-      Serial.print('i');// dim the brake light when brake is released
+      Serial3.print('i');// dim the brake light when brake is released
       car.setAngle(0);
     }
     if (Serial.available()) {
-#ifdef DEBUG //if we are in debug mode, use plain text with netstrings
-
-      //Serial.print("Well, we are waiting");
-      String input = decodedNetstring(Serial.readStringUntil(','));
+#ifdef DEBUG //if we are in debug mode, use plain text with netstrings    !!! Netstrings await var in sort of 3:t10 or 4:t-10
+      String input = decodedNetstring(Serial.readStringUntil('\n'));
       if (input.startsWith("m")) {
         int throttle = input.substring(1).toInt();
         car.setSpeed(speedToScale(throttle));
@@ -260,7 +213,7 @@ void handleInput() {
         if (abs(diff) < OVERRIDE_FREQ_TOLERANCE) { //if the signal we received is close to the idle frequency, then we assume it's neutral
           car.setAngle(0);
         } else { //if the difference between the signal we received and the idle frequency is big enough, only then move the servo
-           car.setAngle(servoFreq); // provide the flexibility to controll steering continuously
+          // car.setAngle(servoFreq); // provide the flexibility to controll steering continuously
           if (servoFreq > NEUTRAL_FREQUENCY) { //turn right if the value is larger than the idle frequency
             car.setAngle(OVERRIDE_STEER_RIGHT);
           } else {
@@ -275,12 +228,12 @@ void handleInput() {
         if (abs(diff) < OVERRIDE_FREQ_TOLERANCE) { //if the signal we received is close to the idle frequency, then we assume it's neutral
           car.setSpeed(0);
         } else {
-         car.setSpeed(throttleFreq - NEUTRAL_FREQUENCY);//// provide the flexibility to controll speed continuously
+          //car.setSpeed(throttleFreq - NEUTRAL_FREQUENCY);//// provide the flexibility to controll speed continuously
           if (throttleFreq < NEUTRAL_FREQUENCY) { //turn right if the value is smaller (that's the way it is with this receiver) than the idle frequency
-                  Serial.println(speedToScale(OVERRIDE_FORWARD_SPEED));
+            //       Serial.println(speedToScale(OVERRIDE_FORWARD_SPEED));
             car.setSpeed(speedToScale(OVERRIDE_FORWARD_SPEED));
           } else {
-                 Serial.println(speedToScale(OVERRIDE_FORWARD_SPEED));
+            //       Serial.println(speedToScale(OVERRIDE_FORWARD_SPEED));
             car.setSpeed(speedToScale(OVERRIDE_BACKWARD_SPEED));
           }
         }
@@ -326,7 +279,7 @@ void updateLEDs() {
           Serial3.print('i');
         }
       }
-      }b
+      }
     */
     prevCheck = millis();
   }
@@ -335,11 +288,9 @@ void updateLEDs() {
 void transmitSensorData() {
   if (millis() - previousTransmission > COM_FREQ) {
 #ifdef DEBUG //if we are in debug mode, use plain text with netstrings
-
-    Serial.print(millis() - previousTransmission);
     String out;
-    out = "US1-";
-  // out += frontSonar.getDistance();
+   // out = "US1-";
+   // out += frontSonar.getDistance();
     out += ".US2-";
     out += rearSonar.getDistance();
     out += ".IR1-";
@@ -354,8 +305,8 @@ void transmitSensorData() {
     out += encoderLeft.getDistance();
     out += ".EN2-";
     out += encoderRight.getDistance();
-  //  out += ".GYR-";
-  //  out += gyro.getAngularDisplacement();
+    out += ".GYR-";
+    out += gyro.getAngularDisplacement();
     out += ".BUTTON-";
     int button = 0;
     if (digitalRead(BUTTON1_PIN)) {
@@ -368,13 +319,13 @@ void transmitSensorData() {
       button = button + 1;
     }
     out += button;
-   // Serial.print(out);
-   
     Serial.println(encodedNetstring(out));
-    delay(500);
 #else //use protobuffer
+
+  //  Serial.print("I got here!");
     Sensors message;
-    message.usFront = frontSonar.getDistance();
+ //  message.usFront = frontSonar.getDistance();
+    message.usFront = 45;
     message.usRear = rearSonar.getDistance();
     message.irFrontRight = middleFrontIR.getDistance();
     message.irRearRight = middleRearIR.getDistance();
@@ -382,6 +333,7 @@ void transmitSensorData() {
     message.irBackRight = rearRightIR.getDistance();
     message.wheelRearLeft = encoderLeft.getDistance();
     message.wheelRearRight = encoderRight.getDistance();
+    //message.GyroHeading = 0;
     message.GyroHeading = gyro.getAngularDisplacement();
     message.lightReading = (analogRead(LIGHT_PIN) * 0.9765625);
     bool buttons[3] = {0, 0, 0};
@@ -420,7 +372,8 @@ void setupChangeInterrupt(const unsigned short pin) { //a method to setup change
 
 //the interrupt service routine for pins A8 until A15 on Arduino mega
 ISR (PCINT2_vect) {
-  unsigned short throttle = digitalRead(OVERRIDE_THROTTLE_PIN);
+
+      unsigned short throttle = digitalRead(OVERRIDE_THROTTLE_PIN);
   unsigned short steering = digitalRead(OVERRIDE_SERVO_PIN);
   if (throttle) { //we are at the beginning of a throttle pulse
     if (!throttleSignalStart) { //it's the beginning of a pulse, if it is HIGH and we have not already started measuring (throttleSignalStart == 0)
@@ -429,12 +382,9 @@ ISR (PCINT2_vect) {
   } else { //we are at the end of the throttle pulse
     if (throttleSignalStart && !throttleSignalPending) { //if the throttle signal has been started AND there is no throttle signal pending to be processed by loop()
       throttleSignalFreq = micros() - throttleSignalStart; //calculate the throttle signal's period
-      //Serial.print("Throttle value is");
-      //Serial.println(steeringSignalFreq);
       throttleSignalStart = 0; //initialize the starting point of the measurement, so we do not go in here again, while the pulse is low
       throttleSignalPending = true; //signal loop() that there is a signal to handle
       qualityControl = qualityControl << 1;
-     
       if ((throttleSignalFreq < MIN_OVERRIDE_FREQ)  || (throttleSignalFreq > MAX_OVERRIDE_FREQ)) { //since we are using an analog RC receiver, there is a lot of noise, usually under the frequency of 900 or over 2000
         qualityControl = qualityControl << 1; //put a 0 bit in the end of qualityControl byte
       } else { //this means that is a valid looking signal
@@ -449,14 +399,11 @@ ISR (PCINT2_vect) {
   } else { //we are at the end of a steering pulse
     if (steeringSignalStart && !steeringSignalPending) { //if the steering signal for the servo has started aAND there is no servo signal pending to be processed by loop()
       steeringSignalFreq = micros() - steeringSignalStart;
-       Serial.print("Steering value is");
-       Serial.println(steeringSignalFreq);
       steeringSignalStart = 0; //initialize the starting point of the measurement, so we do not go in here again, while the pulse is low
       steeringSignalPending = true; //signal loop() that there is a signal to handle
-
-     
     }
   }
+
 }
 
 int getHighBits() { //returns how many 1's exist in the qualityControl variable
@@ -479,37 +426,44 @@ float speedToScale(float speed) {
   }
 }
 
-
-
-
-int median(int vals[], int len) {
-  int minimum = vals[0];
-  int maximum = vals[0];
-  int sum = 0;
-  int median = 90;
-  for (int i = 0; i < len; i ++) {
-    if (vals[i] < minimum) {
-      minimum = vals[i];
-    } else if (vals[i] > maximum) {
-      maximum = vals[i];
-    }
-    sum += vals[i];
-  }
-  sum = sum - (minimum + maximum);
-  median = floor(sum / (len-2));
-  return median;
-}
-  
-
-
-
-
-void rcControllerInterrupt(){
+void rcControllerInterrupt() {
   rcControllerFlag = 1;
 }
 
-void manualControl() {
+void setOne() {
+
+  unsigned short throttle = digitalRead(OVERRIDE_THROTTLE_PIN);
+  unsigned short steering = digitalRead(OVERRIDE_SERVO_PIN);
+  if (throttle) { //we are at the beginning of a throttle pulse
+    if (!throttleSignalStart) { //it's the beginning of a pulse, if it is HIGH and we have not already started measuring (throttleSignalStart == 0)
+      throttleSignalStart = micros(); //log down the microseconds at the beginning of the pulse
+     // Serial.print("Throttle is");
+      // Serial.println(throttleSignalStart);
+    }
+  } else { //we are at the end of the throttle pulse
+    if (throttleSignalStart && !throttleSignalPending) { //if the throttle signal has been started AND there is no throttle signal pending to be processed by loop()
+      throttleSignalFreq = micros() - throttleSignalStart; //calculate the throttle signal's period
+      throttleSignalStart = 0; //initialize the starting point of the measurement, so we do not go in here again, while the pulse is low
+      throttleSignalPending = true; //signal loop() that there is a signal to handle
+      qualityControl = qualityControl << 1;
+      if ((throttleSignalFreq < MIN_OVERRIDE_FREQ)  || (throttleSignalFreq > MAX_OVERRIDE_FREQ)) { //since we are using an analog RC receiver, there is a lot of noise, usually under the frequency of 900 or over 2000
+        qualityControl = qualityControl << 1; //put a 0 bit in the end of qualityControl byte
+      } else { //this means that is a valid looking signal
+        qualityControl |= 1; //put a 1 bit in the end of qualityControl byte
+      } //we do not need to do this for both the channels we have
+    }
+  }
+  if (steering) { //we could be at the beginning of a steering pulse
+    if (!steeringSignalStart) { //if we are already measuring something, that means this is NOT the beginning of a pulse
+      steeringSignalStart = micros(); //get the current time in microseconds, ONLY IF this is really the beginning of a pulse and we weren't already measuring
+    }
+  } else { //we are at the end of a steering pulse
+    if (steeringSignalStart && !steeringSignalPending) { //if the steering signal for the servo has started aAND there is no servo signal pending to be processed by loop()
+      steeringSignalFreq = micros() - steeringSignalStart;
+      steeringSignalStart = 0; //initialize the starting point of the measurement, so we do not go in here again, while the pulse is low
+      steeringSignalPending = true; //signal loop() that there is a signal to handle
+    }
+  }
 
 }
-
 

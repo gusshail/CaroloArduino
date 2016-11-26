@@ -45,27 +45,35 @@ void setup() {
 
 void loop() {
   rcControllerFlag = pulseIn(rcPinSteer, HIGH, 25000); // if the timeout is lower it sometimes time out before getting a value
-  Serial.print("Pulse read: ");
-  Serial.println(rcControllerFlag);
- 
-  buttonRead();
+  Serial.println("Pulse read: ");
+ Serial.print(rcControllerFlag);
+// 
+Serial.print("in LOOP");
+
   
   if(rcControllerFlag > 1000) {
+    Serial.print("Going to RC CONTROLER");
     rcControl();
-    controlFlag = 0;
+    //controlFlag = 0;
+  
+  if (pulseIn(rcPinSteer, LOW, 25000) == 0){
 
-    if (pulseIn(rcPinSteer, LOW, 25000) == 0){
       rcControllerFlag = 0;
       Serial.print("RC control set to off!");
     }
   }else if(controlFlag == 0){
+              Serial.print("control flag is 0");
+  
     motor.writeMicroseconds(1500);
     steering.write(90);
     controlFlag = 1;
   }else{
     manualControl();
+              Serial.print("we are in manual control");
+    
     //handleInput();
   }
+  buttonRead();
   //Serial.println("Odometer counter: ");
   //Serial.println(distance1);
   //Serial.println(distance2);
@@ -74,8 +82,11 @@ void loop() {
 void rcControl(){
   //delay(200); //take away if you dont want to read
   Serial.println("RC Control took over!");
- pulse = pulseIn(rcPinESC, HIGH, 25000);
- velocity = 1500;
+  pulse = pulseIn(rcPinESC, HIGH, 25000);
+  Serial.print("Pulse read in throttle: ");
+ // Serial.println(pulse);
+  
+ //velocity = 1500;
 
   
   if(pulse > 1560) {
@@ -103,14 +114,14 @@ void rcControl(){
     steer = 90;
   }
   //velocity = map(velocity, 1000, 2000, 0, 150); 
-  Serial.print("steer ");
-  Serial.println(steer);
-  Serial.print("velocity ");
-  Serial.println(velocity);
+  //Serial.print("steer ");
+ // Serial.println(steer);
+  //Serial.print("velocity ");
+  //Serial.println(velocity);
   steering.write(steer);
   motor.writeMicroseconds(velocity);   //1650 - vel
   int temp = pulseIn(rcPinSteer, LOW, 25000);
-  Serial.println(temp);
+  //Serial.println(temp);
   if (pulseIn(rcPinSteer, LOW, 25000) == 0){
     rcControllerFlag = 0;
     Serial.print("RC control set to off!");
@@ -122,7 +133,7 @@ void buttonRead() {
   int start = 1560;
   int plsStop = 1500;
   int buttonPulse = pulseIn(rcPinESC, HIGH, 25000);
-  Serial.println(buttonPulse);
+  //Serial.println(buttonPulse);
   
 
   if(buttonPulse < 1400) {
@@ -154,6 +165,8 @@ if (digitalRead(12) && buttonPulse > 1400) {
 
 void manualControl(){
   if (Serial.available()){
+
+    Serial.print("Hi!");
     input = Serial.readStringUntil('\n');
     
     if (input.startsWith("t")){  // turning
