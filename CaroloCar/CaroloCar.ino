@@ -1,3 +1,5 @@
+
+
 #include <Smartcar.h>
 #include "CarVars.h"
 
@@ -6,9 +8,11 @@
 __asm volatile ("nop");
 #endif
 #ifndef DEBUG //if we are not in debug, include the protobuffer libraries and declare variables
-#include <pb_encode.h>
-#include <pb_decode.h>
 #include <messageproto.pb.h>
+#include <pb.h>
+#include <pb_common.h>
+#include <pb_decode.h>
+#include <pb_encode.h>
 const unsigned short flagEND = 19;
 const unsigned short flagESC = 125;
 const unsigned short varXOR  = 32;
@@ -396,7 +400,7 @@ ISR (PCINT2_vect) {
     if (!steeringSignalStart) { //if we are already measuring something, that means this is NOT the beginning of a pulse
       steeringSignalStart = micros(); //get the current time in microseconds, ONLY IF this is really the beginning of a pulse and we weren't already measuring
     }
-  } else { //we are at the end of a steering pulse
+  } else { //we are at the end of a steering pulse 
     if (steeringSignalStart && !steeringSignalPending) { //if the steering signal for the servo has started aAND there is no servo signal pending to be processed by loop()
       steeringSignalFreq = micros() - steeringSignalStart;
       steeringSignalStart = 0; //initialize the starting point of the measurement, so we do not go in here again, while the pulse is low
@@ -418,9 +422,9 @@ int getHighBits() { //returns how many 1's exist in the qualityControl variable
 float speedToScale(float speed) {
   if (car.cruiseControlEnabled()) return speed; //if cruise control is enabled, don't try to change it
   if (speed > 0) { //we need to separate the two cases (larger or smaller than 0) as the formula we use is not linear
-    return 5.352* speed + 8.0895; //5.1696 * speed + 9.568;
+    return 5.2119 * speed + 9.2411; //5.352* speed + 8.0895; 5.1696 * speed + 9.568;
   } else if (speed < 0) {
-    return 20.415 * speed - 46.627;
+    return 20.415 * speed - 46.627; // 20.415 * speed - 46.627
   } else {
     return 0;
   }
@@ -429,41 +433,3 @@ float speedToScale(float speed) {
 void rcControllerInterrupt() {
   rcControllerFlag = 1;
 }
-
-void setOne() {
-
-  unsigned short throttle = digitalRead(OVERRIDE_THROTTLE_PIN);
-  unsigned short steering = digitalRead(OVERRIDE_SERVO_PIN);
-  if (throttle) { //we are at the beginning of a throttle pulse
-    if (!throttleSignalStart) { //it's the beginning of a pulse, if it is HIGH and we have not already started measuring (throttleSignalStart == 0)
-      throttleSignalStart = micros(); //log down the microseconds at the beginning of the pulse
-     // Serial.print("Throttle is");
-      // Serial.println(throttleSignalStart);
-    }
-  } else { //we are at the end of the throttle pulse
-    if (throttleSignalStart && !throttleSignalPending) { //if the throttle signal has been started AND there is no throttle signal pending to be processed by loop()
-      throttleSignalFreq = micros() - throttleSignalStart; //calculate the throttle signal's period
-      throttleSignalStart = 0; //initialize the starting point of the measurement, so we do not go in here again, while the pulse is low
-      throttleSignalPending = true; //signal loop() that there is a signal to handle
-      qualityControl = qualityControl << 1;
-      if ((throttleSignalFreq < MIN_OVERRIDE_FREQ)  || (throttleSignalFreq > MAX_OVERRIDE_FREQ)) { //since we are using an analog RC receiver, there is a lot of noise, usually under the frequency of 900 or over 2000
-        qualityControl = qualityControl << 1; //put a 0 bit in the end of qualityControl byte
-      } else { //this means that is a valid looking signal
-        qualityControl |= 1; //put a 1 bit in the end of qualityControl byte
-      } //we do not need to do this for both the channels we have
-    }
-  }
-  if (steering) { //we could be at the beginning of a steering pulse
-    if (!steeringSignalStart) { //if we are already measuring something, that means this is NOT the beginning of a pulse
-      steeringSignalStart = micros(); //get the current time in microseconds, ONLY IF this is really the beginning of a pulse and we weren't already measuring
-    }
-  } else { //we are at the end of a steering pulse
-    if (steeringSignalStart && !steeringSignalPending) { //if the steering signal for the servo has started aAND there is no servo signal pending to be processed by loop()
-      steeringSignalFreq = micros() - steeringSignalStart;
-      steeringSignalStart = 0; //initialize the starting point of the measurement, so we do not go in here again, while the pulse is low
-      steeringSignalPending = true; //signal loop() that there is a signal to handle
-    }
-  }
-
-}
-

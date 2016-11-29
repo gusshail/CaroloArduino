@@ -1,8 +1,8 @@
 #ifndef CarVars_h
 #define CarVars_h
 
-#define SERVO_PIN 8
-#define ESC_PIN 9
+#define SERVO_PIN 9
+#define ESC_PIN 8
 #define BUTTON1_PIN 10
 #define BUTTON2_PIN 11
 #define BUTTON3_PIN 12
