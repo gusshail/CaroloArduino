@@ -8,7 +8,10 @@
 #define BUTTON3_PIN 12
 
 #define US_REAR_ADDRESS 0x73
-#define US_FRONT_ADDRESS 0x69
+//#define US_FRONT_ADDRESS 0x69
+
+#define US_REAR_TRIGGER 5        // Connected to Arduino directly
+#define US_REAR_ECHO 4           // Connected to Arduino directly
 
 #define US_GAIN 0x1F //maximum gain
 #define US_RANGE 0x07 //7 for 34 centimeters

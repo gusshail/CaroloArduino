@@ -3,6 +3,7 @@
 #include <Smartcar.h>
 #include "CarVars.h"
 
+
 //#define DEBUG //comment this line out for protobuffer output
 #if 1 //preprocessor bug workaround, do not remove if you want the #ifndef DEBUG to work
 __asm volatile ("nop");
@@ -28,7 +29,8 @@ boolean status;
 Odometer encoderLeft(33), encoderRight(33);
 Gyroscope gyro(15);
 Car car(useServo(SERVO_PIN), useESC(ESC_PIN)); //steering, esc
-SRF08 frontSonar, rearSonar;
+SRF08 rearSonar;
+SR04 frontSonar;    // Front Sensor got broken, we replaced it with frontSonar;
 GP2D120 rearLeftIR, rearRightIR, middleRearIR, middleFrontIR;
 
 const unsigned short COM_FREQ = 60;
@@ -61,10 +63,11 @@ int ledPacket = 0; //a packet that includes the led light states
 
 void setup() {
   rcControllerFlag = 1;
-  frontSonar.attach(US_FRONT_ADDRESS);
-  frontSonar.setGain(US_GAIN);
-  frontSonar.setRange(US_RANGE);
-  frontSonar.setPingDelay(US_DELAY);
+  //frontSonar.attach(US_FRONT_ADDRESS);
+  //frontSonar.setGain(US_GAIN);
+ // frontSonar.setRange(US_RANGE);
+ // frontSonar.setPingDelay(US_DELAY);
+  frontSonar.attach(US_REAR_TRIGGER,US_REAR_ECHO);
   rearSonar.attach(US_REAR_ADDRESS);
   rearSonar.setGain(US_GAIN);
   rearSonar.setRange(US_RANGE);
@@ -78,7 +81,7 @@ void setup() {
   encoderRight.attach(ENCODER_RIGHT_PIN);
   encoderRight.begin();
   car.begin(encoderLeft);
- setupChangeInterrupt(OVERRIDE_THROTTLE_PIN);
+  setupChangeInterrupt(OVERRIDE_THROTTLE_PIN);
   setupChangeInterrupt(OVERRIDE_SERVO_PIN);
  // attachInterrupt(digitalPinToInterrupt(OVERRIDE_THROTTLE_PIN), rcControllerInterrupt, RISING);
  // attachInterrupt(digitalPinToInterrupt(OVERRIDE_SERVO_PIN), rcControllerInterrupt, RISING);
@@ -293,8 +296,8 @@ void transmitSensorData() {
   if (millis() - previousTransmission > COM_FREQ) {
 #ifdef DEBUG //if we are in debug mode, use plain text with netstrings
     String out;
-   // out = "US1-";
-   // out += frontSonar.getDistance();
+    out = "US1-";
+    out += frontSonar.getDistance();
     out += ".US2-";
     out += rearSonar.getDistance();
     out += ".IR1-";
@@ -328,8 +331,8 @@ void transmitSensorData() {
 
   //  Serial.print("I got here!");
     Sensors message;
- //  message.usFront = frontSonar.getDistance();
-    message.usFront = 45;
+   message.usFront = frontSonar.getDistance();
+   // message.usFront = 45;
     message.usRear = rearSonar.getDistance();
     message.irFrontRight = middleFrontIR.getDistance();
     message.irRearRight = middleRearIR.getDistance();
@@ -422,7 +425,7 @@ int getHighBits() { //returns how many 1's exist in the qualityControl variable
 float speedToScale(float speed) {
   if (car.cruiseControlEnabled()) return speed; //if cruise control is enabled, don't try to change it
   if (speed > 0) { //we need to separate the two cases (larger or smaller than 0) as the formula we use is not linear
-    return 5.2119 * speed + 9.2411; //5.352* speed + 8.0895; 5.1696 * speed + 9.568;
+    return 5.2119 * speed + 9.0411; //5.352* speed + 8.0895; 5.1696 * speed + 9.568;      Lane following cpp speed - 1.3 - (+8.0); Parking - 0.3 (+9.2) 
   } else if (speed < 0) {
     return 20.415 * speed - 46.627; // 20.415 * speed - 46.627
   } else {
